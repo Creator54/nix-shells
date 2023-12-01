@@ -15,6 +15,7 @@
       devShells = {
         java = import ./devShells/java.nix { inherit pkgs; };
         python = import ./devShells/python.nix { inherit pkgs; };
+        selenium = import ./devShells/selenium.nix { inherit pkgs; };
       };
     }
   );
