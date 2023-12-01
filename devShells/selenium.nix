@@ -41,7 +41,7 @@ pkgs.mkShell rec {
 
     # Display example usage instructions
     cat <<EOF
-Example Usage:
+Example Usage from: https://pypi.org/project/webdriver-manager
 
 Firefox:
 ------
