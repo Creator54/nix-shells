@@ -3,9 +3,23 @@
 pkgs.mkShell rec {
   name = "selenium";
   venvDir = "./.venv";
-  buildInputs = [ pkgs.python3 ];
+  buildInputs = [ pkgs.python310 ];
   EDITOR = builtins.getEnv "EDITOR";
   PWD = builtins.getEnv "PWD";
+
+  NIX_LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
+    pkgs.stdenv.cc.cc
+    pkgs.glib
+    pkgs.openssl
+    pkgs.nss
+    pkgs.nspr
+    pkgs.xorg.libxcb
+  ];
+
+  #https://discourse.nixos.org/t/devenv-nix-ld-throws-access-to-canonical-path-is-forbidden-in-restricted-mode/25076
+  #need to pass --impure flag
+  NIX_LD = pkgs.lib.fileContents "${pkgs.stdenv.cc}/nix-support/dynamic-linker";
+
   shellHook = ''
     set -h #remove "bash: hash: hashing disabled" warning !
     SOURCE_DATE_EPOCH=$(date +%s)
@@ -13,7 +27,6 @@ pkgs.mkShell rec {
     if ! [ -d "${venvDir}" ]; then
       python -m venv "${venvDir}"
     fi
-    export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [ pkgs.zlib pkgs.stdenv.cc.cc ]}":LD_LIBRARY_PATH;
     source "${venvDir}/bin/activate"
     python -m pip install --upgrade pip
     pip install selenium
