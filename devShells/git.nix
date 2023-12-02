@@ -2,16 +2,13 @@
 
 pkgs.mkShell rec {
   buildInputs = [ pkgs.git ];
+  GIT_USERNAME = builtins.getEnv "GIT_USERNAME";
+  GIT_USEREMAIL = builtins.getEnv "GIT_USEREMAIL";
 
   shellHook = ''
     # Set new git config for the current repository if environment variables are provided
-    if [ -n "$GIT_USERNAME" ]; then
-      git config user.name "GIT_USERNAME"
-    fi
-
-    if [ -n "GIT_USEREMAIL" ]; then
-      git config user.email "GIT_USEREMAIL"
-    fi
+    git config user.name "${GIT_USERNAME}"
+    git config user.email "${GIT_USEREMAIL}"
 
     # Function to unset git config for the current repository
     function unset_git_config {
