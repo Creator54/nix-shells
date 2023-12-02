@@ -2,7 +2,7 @@
 
 pkgs.mkShell {
   name = "python";
-  buildInputs = [ pkgs.python310 ];
+  buildInputs = [ pkgs.python311 ];
 
   shellHook = ''
     set -h #remove "bash: hash: hashing disabled" warning !
