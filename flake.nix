@@ -16,6 +16,7 @@
         git = import ./devShells/git.nix { inherit pkgs; };
         java = import ./devShells/java.nix { inherit pkgs; };
         mysql = import ./devShells/mysql.nix { inherit pkgs; };
+        podman = import ./devShells/podman.nix { inherit pkgs; };
         python = import ./devShells/python.nix { inherit pkgs; };
         selenium = import ./devShells/selenium.nix { inherit pkgs; };
       };
