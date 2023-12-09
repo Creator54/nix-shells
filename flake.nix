@@ -18,6 +18,7 @@
         mysql = import ./devShells/mysql.nix { inherit pkgs; };
         podman = import ./devShells/podman.nix { inherit pkgs; };
         python = import ./devShells/python.nix { inherit pkgs; };
+        builder = import ./devShells/builder.nix { inherit pkgs; };
         selenium = import ./devShells/selenium.nix { inherit pkgs; };
       };
     }
