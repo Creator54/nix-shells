@@ -83,14 +83,63 @@ let
       WORK_DIR="\$HOME/.local/share/signoz"
       echo "📁 Setting up directories in \$WORK_DIR..."
 
-      # Clean up existing directory if it exists
-      rm -rf "\$WORK_DIR"
+      # Create directory if it doesn't exist
       mkdir -p "\$WORK_DIR"
 
-      # Clone the repository
-      echo "📥 Cloning SigNoz repository..."
-      ${pkgs.git}/bin/git clone --depth 1 https://github.com/signoz/signoz.git "\$WORK_DIR"
+      # Check if this is a refresh
+      if [ "\$1" = "refresh-signoz" ]; then
+        echo "🔄 Refreshing SigNoz - cleaning up existing installation..."
+        rm -rf "\$WORK_DIR"
+        mkdir -p "\$WORK_DIR"
+        echo "📥 Cloning fresh SigNoz repository..."
+        ${pkgs.git}/bin/git clone --depth 1 https://github.com/signoz/signoz.git "\$WORK_DIR"
+      else
+        if [ -d "\$WORK_DIR/.git" ]; then
+          echo "📂 Found existing SigNoz installation..."
+          cd "\$WORK_DIR"
+          
+          # Check for local changes
+          if ${pkgs.git}/bin/git diff --quiet; then
+            echo "📥 No local changes found, updating from remote..."
+            ${pkgs.git}/bin/git pull
+          else
+            echo "⚠️  Local changes detected in compose files"
+            echo "ℹ️  Keeping local changes and skipping update"
+            echo "💡 Use 'refresh-signoz' to get a fresh installation"
+          fi
+        else
+          echo "📥 Cloning SigNoz repository..."
+          ${pkgs.git}/bin/git clone --depth 1 https://github.com/signoz/signoz.git "\$WORK_DIR"
+        fi
+      fi
+
       cd "\$WORK_DIR/deploy/docker"
+      echo ""
+
+      echo "🔧 Applying compatibility fixes..."
+      # Find and patch all docker-compose files
+      ${pkgs.findutils}/bin/find "\$WORK_DIR/deploy/docker" -name "docker-compose*.yaml" -type f -exec \
+        ${pkgs.gnused}/bin/sed -i \
+          -e 's/ulimits:/#ulimits:/g' \
+          -e 's/  nproc/#  nproc/g' \
+          -e 's/  nofile/#  nofile/g' \
+          -e 's/    soft/#    soft/g' \
+          -e 's/    hard/#    hard/g' \
+          {} \;
+
+      # Replace Docker paths with Podman paths
+      ${pkgs.findutils}/bin/find "\$WORK_DIR/deploy/docker" -name "docker-compose*.yaml" -type f -exec \
+        ${pkgs.gnused}/bin/sed -i \
+          -e 's|/var/lib/docker/containers|/var/lib/containers|g' \
+          -e 's|/var/run/docker.sock|/run/podman/podman.sock|g' \
+          {} \;
+
+      # Remove 'version' field from docker-compose files
+      ${pkgs.findutils}/bin/find "\$WORK_DIR/deploy/docker" -name "docker-compose*.yaml" -type f -exec \
+        sh -c '${pkgs.coreutils}/bin/cat "{}" | ${pkgs.gnugrep}/bin/grep -v "version:" > "{}.tmp" && mv "{}.tmp" "{}"' \;
+
+      echo "✅ Fixes applied"
+      echo ""
 
       # Ensure data directories exist with proper permissions
       mkdir -p ./data/{clickhouse,zookeeper}
@@ -108,11 +157,6 @@ let
 
       echo "📦 Starting containers..."
       ${pkgs.podman}/bin/podman compose up -d --remove-orphans
-
-      echo ""
-      echo "🔍 Checking initialization status..."
-      sleep 5
-      ${pkgs.podman}/bin/podman logs signoz-init-clickhouse 2>/dev/null || echo "⚠️  Init container not found yet, please wait..."
 
       echo ""
       echo "✨ SigNoz is starting up!"
@@ -176,7 +220,6 @@ pkgs.mkShell {
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
     echo "📂 Locations:"
-    echo "   Source code: $out/share/signoz"
     echo "   Working dir: $HOME/.local/share/signoz"
     echo ""
     echo "🔧 Configuring Podman..."
@@ -189,7 +232,7 @@ pkgs.mkShell {
     echo "📌 Available commands:"
     echo "   start-signoz    - Start SigNoz services"
     echo "   stop-signoz     - Stop SigNoz services"
-    echo "   restart-signoz  - Restart SigNoz services"
+    echo "   refresh-signoz  - Refresh SigNoz services"
     echo ""
     echo "📋 Container management:"
     echo "   podman ps       - List running containers"
