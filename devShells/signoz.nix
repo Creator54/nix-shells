@@ -63,35 +63,31 @@ let
   # SigNoz derivation
   signoz = pkgs.stdenv.mkDerivation {
     name = "signoz";
-    version = "0.70.1";
 
-    src = pkgs.fetchFromGitHub {
-      owner = "signoz";
-      repo = "signoz";
-      rev = "v0.70.1";
-      sha256 = "sha256-q2imQpkrk4EP14k3Dux3nqQ0GuXZpzLoG9gP6ZjaqNQ=";
+    src = builtins.fetchTarball {
+      url = "https://github.com/signoz/signoz/archive/main.tar.gz";
+      sha256 = "sha256:19pr99qw0zqfqisfzvvcwp9jwr3lnjz2vsgwr3w759jrknsqj5z3";
     };
 
-    # Skip all build phases except installPhase
     dontBuild = true;
     dontConfigure = true;
 
     installPhase = ''
       mkdir -p $out/share/signoz
-      cp -r deploy/docker/* $out/share/signoz
+      cp -r * $out/share/signoz
 
       # Create wrapper scripts
       mkdir -p $out/bin
       cat > $out/bin/start-signoz <<EOF
       #!${pkgs.runtimeShell}
-      cd $out/share/signoz
+      cd $out/share/signoz/deploy/docker
       CONTAINERS_CONF=\$HOME/.config/containers/containers.conf exec ${pkgs.podman}/bin/podman compose up -d --remove-orphans
       EOF
       chmod +x $out/bin/start-signoz
 
       cat > $out/bin/stop-signoz <<EOF
       #!${pkgs.runtimeShell}
-      cd $out/share/signoz
+      cd $out/share/signoz/deploy/docker
       CONTAINERS_CONF=\$HOME/.config/containers/containers.conf exec ${pkgs.podman}/bin/podman compose down
       EOF
       chmod +x $out/bin/stop-signoz
