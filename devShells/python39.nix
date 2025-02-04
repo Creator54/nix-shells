@@ -2,9 +2,11 @@
 
 pkgs.mkShell {
   name = "python-3.9";
-  buildInputs = [ 
+  buildInputs = [
     pkgs.python39
+    pkgs.nodejs
     pkgs.fzf
+    pkgs.gcc
     (pkgs.writeShellScriptBin "pymod" ''
       #!/usr/bin/env bash
       pip list
