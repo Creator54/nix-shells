@@ -17,6 +17,7 @@
         java = import ./devShells/java.nix { inherit pkgs; };
         mysql = import ./devShells/mysql.nix { inherit pkgs; };
         podman = import ./devShells/podman.nix { inherit pkgs; };
+        signoz = import ./devShells/signoz.nix { inherit pkgs; };
         python = import ./devShells/python.nix { inherit pkgs; };
         python39 = import ./devShells/python39.nix { inherit pkgs; };
         builder = import ./devShells/builder.nix { inherit pkgs; };
