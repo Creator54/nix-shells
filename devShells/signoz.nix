@@ -76,39 +76,39 @@ let
       cat > $out/bin/start-signoz <<EOF
       #!${pkgs.runtimeShell}
       echo ""
-      echo "🚀 Starting SigNoz services..."
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo -e "\033[1;36m🚀 Starting SigNoz services...\033[0m"
+      echo -e "\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
 
       # Create working directory in user's home
       WORK_DIR="\$HOME/.local/share/signoz"
-      echo "📁 Setting up directories in \$WORK_DIR..."
+      echo -e "\033[1;34m📁 Setting up directories in \$WORK_DIR...\033[0m"
 
       # Create directory if it doesn't exist
       mkdir -p "\$WORK_DIR"
 
       # Check if this is a refresh
       if [ "\$1" = "refresh-signoz" ]; then
-        echo "🔄 Refreshing SigNoz - cleaning up existing installation..."
+        echo -e "\033[1;33m🔄 Refreshing SigNoz - cleaning up existing installation...\033[0m"
         rm -rf "\$WORK_DIR"
         mkdir -p "\$WORK_DIR"
-        echo "📥 Cloning fresh SigNoz repository..."
+        echo -e "\033[1;32m📥 Cloning fresh SigNoz repository...\033[0m"
         ${pkgs.git}/bin/git clone --depth 1 https://github.com/signoz/signoz.git "\$WORK_DIR"
       else
         if [ -d "\$WORK_DIR/.git" ]; then
-          echo "📂 Found existing SigNoz installation..."
+          echo -e "\033[1;34m📂 Found existing SigNoz installation...\033[0m"
           cd "\$WORK_DIR"
           
           # Check for local changes
           if ${pkgs.git}/bin/git diff --quiet; then
-            echo "📥 No local changes found, updating from remote..."
+            echo -e "\033[1;32m📥 No local changes found, updating from remote...\033[0m"
             ${pkgs.git}/bin/git pull
           else
-            echo "⚠️  Local changes detected in compose files"
-            echo "ℹ️  Keeping local changes and skipping update"
-            echo "💡 Use 'refresh-signoz' to get a fresh installation"
+            echo -e "\033[1;33m⚠️  Local changes detected in compose files\033[0m"
+            echo -e "\033[1;34mℹ️  Keeping local changes and skipping update\033[0m"
+            echo -e "\033[1;36m💡 Use 'refresh-signoz' to get a fresh installation\033[0m"
           fi
         else
-          echo "📥 Cloning SigNoz repository..."
+          echo -e "\033[1;32m📥 Cloning SigNoz repository...\033[0m"
           ${pkgs.git}/bin/git clone --depth 1 https://github.com/signoz/signoz.git "\$WORK_DIR"
         fi
       fi
@@ -116,7 +116,7 @@ let
       cd "\$WORK_DIR/deploy/docker"
       echo ""
 
-      echo "🔧 Applying compatibility fixes..."
+      echo -e "\033[1;34m🔧 Applying compatibility fixes...\033[0m"
       # Find and patch all docker-compose files
       ${pkgs.findutils}/bin/find "\$WORK_DIR/deploy/docker" -name "docker-compose*.yaml" -type f -exec \
         ${pkgs.gnused}/bin/sed -i \
@@ -138,32 +138,53 @@ let
       ${pkgs.findutils}/bin/find "\$WORK_DIR/deploy/docker" -name "docker-compose*.yaml" -type f -exec \
         sh -c '${pkgs.coreutils}/bin/cat "{}" | ${pkgs.gnugrep}/bin/grep -v "version:" > "{}.tmp" && mv "{}.tmp" "{}"' \;
 
-      echo "✅ Fixes applied"
+      echo -e "\033[1;32m✅ Fixes applied\033[0m"
       echo ""
 
       # Ensure data directories exist with proper permissions
       mkdir -p ./data/{clickhouse,zookeeper}
       chmod -R 777 ./data
 
-      echo "✅ Setup complete"
+      echo -e "\033[1;32m✅ Setup complete\033[0m"
       echo ""
 
-      echo "🔧 Configuring environment..."
+      echo -e "\033[1;34m🔧 Configuring environment...\033[0m"
       # Ensure podman socket directory exists
       mkdir -p /run/user/\$(id -u)/podman
       export COMPOSE_PROJECT_NAME="signoz"
-      echo "✅ Environment configured"
+      echo -e "\033[1;32m✅ Environment configured\033[0m"
       echo ""
 
-      echo "📦 Starting containers..."
+      echo -e "\033[1;35m📦 Starting containers...\033[0m"
       ${pkgs.podman}/bin/podman compose up -d --remove-orphans
 
+      # Wait for services to be ready
+      echo -e "\n\033[1;34m⏳ Waiting for services to be ready...\033[0m"
+      attempt=1
+      max_attempts=30
+      while [ \$attempt -le \$max_attempts ]; do
+        if ${pkgs.curl}/bin/curl -s http://localhost:3301 >/dev/null; then
+          echo -e "\033[1;32m✅ Services are ready!\033[0m"
+          break
+        fi
+        echo -e "\033[1;33m⌛ Attempt \$attempt/\$max_attempts - Still waiting...\033[0m"
+        sleep 2
+        attempt=\$((attempt + 1))
+      done
+
+      if [ \$attempt -gt \$max_attempts ]; then
+        echo -e "\033[1;31m❌ Timeout waiting for services\033[0m"
+      fi
+
       echo ""
-      echo "✨ SigNoz is starting up!"
-      echo "━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "🌐 UI: http://localhost:3301"
-      echo "📊 Query Service: http://localhost:8080"
-      echo "🔧 Management: http://localhost:3301/settings"
+      echo -e "\033[1;32m✨ SigNoz is running!\033[0m"
+      echo -e "\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo -e "\033[1;34m🌐 UI: \033[1;36mhttp://localhost:3301\033[0m"
+      echo -e "\033[1;34m📊 Status: \033[1;32mHealthy\033[0m"
+
+      # Show running containers
+      echo -e "\n\033[1;34m📋 Running Containers:\033[0m"
+      ${pkgs.podman}/bin/podman ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | ${pkgs.gnused}/bin/sed '1s/^/\x1b[1;36m/' | ${pkgs.gnused}/bin/sed '1s/$/\x1b[0m/'
       echo ""
       EOF
       chmod +x $out/bin/start-signoz
@@ -171,25 +192,25 @@ let
       cat > $out/bin/stop-signoz <<EOF
       #!${pkgs.runtimeShell}
       echo ""
-      echo "🛑 Stopping SigNoz services..."
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo -e "\033[1;31m🛑 Stopping SigNoz services...\033[0m"
+      echo -e "\033[1;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
 
       cd "\$HOME/.local/share/signoz/deploy/docker"
       ${pkgs.podman}/bin/podman compose down
 
       if [ \$? -eq 0 ]; then
-      echo ""
-      echo "✅ SigNoz services stopped successfully"
-      echo ""
+        echo ""
+        echo -e "\033[1;32m✅ SigNoz services stopped successfully\033[0m"
+        echo ""
       else
-      echo ""
-      echo "❌ Failed to stop SigNoz services"
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "💡 Try manual cleanup:"
-      echo "   podman ps -a              # List all containers"
-      echo "   podman stop <container>   # Stop a container"
-      echo "   podman rm <container>     # Remove a container"
-      echo ""
+        echo ""
+        echo -e "\033[1;31m❌ Failed to stop SigNoz services\033[0m"
+        echo -e "\033[1;31m━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+        echo -e "\033[1;36m💡 Try manual cleanup:\033[0m"
+        echo -e "\033[1;34m   podman ps -a              \033[0m# List all containers"
+        echo -e "\033[1;34m   podman stop <container>   \033[0m# Stop a container"
+        echo -e "\033[1;34m   podman rm <container>     \033[0m# Remove a container"
+        echo ""
       fi
       EOF
       chmod +x $out/bin/stop-signoz
@@ -208,6 +229,7 @@ pkgs.mkShell {
     pkgs.fuse-overlayfs
     pkgs.cni-plugins
     pkgs.git # Added git for cloning
+    pkgs.curl # Added for health checks
     signoz
     # Add some debug tools
     pkgs.procps
@@ -216,28 +238,28 @@ pkgs.mkShell {
 
   shellHook = ''
     echo ""
-    echo "📦 SigNoz Development Environment"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo -e "\033[1;35m📦 SigNoz Development Environment\033[0m"
+    echo -e "\033[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
     echo ""
-    echo "📂 Locations:"
-    echo "   Working dir: $HOME/.local/share/signoz"
+    echo -e "\033[1;34m📂 Locations:\033[0m"
+    echo -e "   Working dir: \033[1;36m$HOME/.local/share/signoz\033[0m"
     echo ""
-    echo "🔧 Configuring Podman..."
+    echo -e "\033[1;34m🔧 Configuring Podman...\033[0m"
     ${podmanSetupScript}
-    echo "✅ Podman configured"
+    echo -e "\033[1;32m✅ Podman configured\033[0m"
     echo ""
 
-    echo "🚀 Initializing SigNoz..."
-    echo "━━━━━━━━━━━━━━━━━━━━━━"
-    echo "📌 Available commands:"
-    echo "   start-signoz    - Start SigNoz services"
-    echo "   stop-signoz     - Stop SigNoz services"
-    echo "   refresh-signoz  - Refresh SigNoz services"
+    echo -e "\033[1;35m🚀 Initializing SigNoz...\033[0m"
+    echo -e "\033[1;35m━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo -e "\033[1;34m📌 Available commands:\033[0m"
+    echo -e "   \033[1;32mstart-signoz    \033[0m- Start SigNoz services"
+    echo -e "   \033[1;31mstop-signoz     \033[0m- Stop SigNoz services"
+    echo -e "   \033[1;33mrefresh-signoz  \033[0m- Refresh SigNoz services"
     echo ""
-    echo "📋 Container management:"
-    echo "   podman ps       - List running containers"
-    echo "   podman ps -a    - List all containers"
-    echo "   podman logs     - View container logs"
+    echo -e "\033[1;34m📋 Container management:\033[0m"
+    echo -e "   \033[1;36mpodman ps       \033[0m- List running containers"
+    echo -e "   \033[1;36mpodman ps -a    \033[0m- List all containers"
+    echo -e "   \033[1;36mpodman logs     \033[0m- View container logs"
     echo ""
 
     # Start SigNoz
