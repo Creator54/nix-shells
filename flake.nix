@@ -10,9 +10,9 @@
   flake-utils.lib.eachDefaultSystem (system:
     let
       pkgs = nixpkgs.legacyPackages.${system};
-    in
-    {
-      devShells = {
+      
+      # Import all devShells
+      shells = {
         git = import ./devShells/git.nix { inherit pkgs; };
         java = import ./devShells/java.nix { inherit pkgs; };
         mysql = import ./devShells/mysql.nix { inherit pkgs; };
@@ -25,6 +25,24 @@
         zen-browser = import ./devShells/zen-browser.nix { inherit pkgs; };
         postgresql = import ./devShells/postgresql.nix { inherit pkgs; };
       };
+      
+      # Extract packages from devShells that have buildInputs
+      extractPackages = shell: 
+        if shell ? buildInputs 
+        then shell.buildInputs 
+        else [];
+      
+      # Create packages from devShells
+      shellPackages = pkgs.lib.mapAttrs (name: shell: 
+        pkgs.symlinkJoin {
+          name = "${name}-env";
+          paths = extractPackages shell;
+        }
+      ) shells;
+    in
+    {
+      packages = shellPackages;
+      devShells = shells;
     }
   );
 }
