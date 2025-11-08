@@ -13,6 +13,8 @@ A personal collection of development environments.
 - `mysql` - MariaDB development environment
 - `git` - Git with configurable user settings
 - `builder` - MetaGPT wrapper
+- `postgresql` - PostgreSQL development environment with auto-start
+- `zen-browser` - Zen Browser web browser
 
 ## Usage
 

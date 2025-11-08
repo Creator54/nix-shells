@@ -22,6 +22,8 @@
         python39 = import ./devShells/python39.nix { inherit pkgs; };
         builder = import ./devShells/builder.nix { inherit pkgs; };
         selenium = import ./devShells/selenium.nix { inherit pkgs; };
+        zen-browser = import ./devShells/zen-browser.nix { inherit pkgs; };
+        postgresql = import ./devShells/postgresql.nix { inherit pkgs; };
       };
     }
   );
